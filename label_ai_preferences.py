@@ -124,9 +124,19 @@ def main(base_dir, model1_name, model2_name, max_length, data_fraction, max_num_
     with open(model2_output_path, 'w') as f:
         json.dump(model2_outputs, f, indent=4)
 
-    alpaca_eval.evaluate(model_outputs=model1_output_path, annotators_config=llm, name=comparison_name, output_path=comparison_folder, reference_outputs=model2_output_path)
+    if not isinstance(llm, list):
+        alpaca_eval.evaluate(model_outputs=model1_output_path, annotators_config=llm, name=comparison_name, output_path=comparison_folder, reference_outputs=model2_output_path)
+    else:
+        for llm_single in llm:
+            comparison_folder_single_llm = os.path.join(comparison_folder, str(llm_single))
+            alpaca_eval.evaluate(model_outputs=model1_output_path, annotators_config=llm_single, name=comparison_name, output_path=comparison_folder_single_llm, reference_outputs=model2_output_path)
 
 if __name__ == '__main__':
+    def str_or_list(value):
+        if value.startswith("[") and value.endswith("]"):
+            # Remove brackets and split by commas to create a list
+            return [v.strip() for v in value[1:-1].split(",")]
+        return value  # Otherwise, treat it as a single string
     parser = argparse.ArgumentParser()
     parser.add_argument('--model1_name', type=str, default='temp1.0')
     parser.add_argument('--model2_name', type=str, default='chatgpt')
@@ -137,7 +147,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_prompt_length', type=int, default=256)
     parser.add_argument('--num_turns', type=int, default=1)
     parser.add_argument('--data_fraction', type=float, default=1.0)
-    parser.add_argument('--llm', type=str, default='claude')
+    parser.add_argument('--llm', type=str_or_list, default='claude')
     parser.add_argument('--filter_out_fraction', type=float, default=0.)
     parser.add_argument('--out_folder_name', type=str, default=None)
     args = parser.parse_args()
