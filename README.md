@@ -68,7 +68,7 @@ First, create a virtualenv and install the dependencies. Python 3.8+ is recommen
 
 Set up the PROJECT_CACHE path. All trained models and data will be saved to the PROJECT_CACHE.
     
-    export PROJECT_CACHE=~/.cache/rlaif
+    export PROJECT_CACHE=./.cache/rlaif
 
 ### Step 2: Download/generate SFT data
 
@@ -78,7 +78,7 @@ Set up the PROJECT_CACHE path. All trained models and data will be saved to the 
 
 We'll take advantage of FSDP's mixed precision in bfloat16 to speed up training; we usually see about a 50% speedup. By default, SFT will run for a single epoch over a mixture of the selected datasets. Datasets will be downloaded on the fly and cached locally.
 
-    python -u train.py loss=sft model=mistral7b datasets=[sharegpt] exp_name=sharegpt_mistral7b eval_batch_size=16 sample_during_eval=false debug=false lr=1e-6 trainer=FSDPTrainer activation_checkpointing=True data_fraction=0.1 save_every=epoch_3 n_epochs=9
+    python3 -u train.py loss=sft model=mistral7b datasets=[sharegpt] exp_name=sharegpt_mistral7b eval_batch_size=16 sample_during_eval=false debug=false lr=1e-6 trainer=FSDPTrainer activation_checkpointing=True data_fraction=0.1 save_every=epoch_3 n_epochs=9
 
 This runs SFT on 10% of the prompts in ShareGPT, training for 9 epochs and saving every 3 epochs. Assume that the auto-generated output directory is `${PROJECT_CACHE}/sharegpt_mistral7b_2024-02-19_16-55-49_904051/`
 
@@ -106,7 +106,7 @@ If you generate your own AI feedback dataset, it will be stored by default at `$
 
 Check either wandb (if enabled, it is by default) or your output log to find the local run directory. To run DPO, you'll need the path to the final weights, which will look something like `${PROJECT_CACHE}/sharegpt_mistral7b_2024-02-19_16-55-49_904051/epoch-9/policy.pt`.
 
-    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python3 train.py loss=dpo loss.beta=0.05 model.archive=~/.cache/rlaif/sharegpt_pythia28_2024-02-19_16-55-49_904051/epoch-3/policy.pt prefs_path=${PROJECT_CACHE}/sharegpt_data/comparisons_gpt4/mistral7bsft_vs_chatgpt/annotations.json exp_name=pythia28 data_fraction=1.0 model=pythia28 save_every=epoch_1 n_epochs=3
+    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python3 train.py loss=dpo loss.beta=0.05 model.archive=./.cache/rlaif/sharegpt_pythia28_2024-02-19_16-55-49_904051/epoch-3/policy.pt prefs_path=${PROJECT_CACHE}/sharegpt_data/comparisons_gpt4/mistral7bsft_vs_chatgpt/annotations.json exp_name=pythia28 data_fraction=1.0 model=pythia28 save_every=epoch_1 n_epochs=3
 
 > On 8 80GB A100s, DPO training took about 2hrs 45min.
 

@@ -44,7 +44,7 @@ def get_local_dir(prefixes_to_resolve: List[str]) -> str:
     #         return f"{prefix}/{getpass.getuser()}"
     # os.makedirs(prefix)
     # return f"{prefix}/{getpass.getuser()}"
-    return os.getenv("PROJECT_CACHE", "~/.cache")
+    return os.getenv("PROJECT_CACHE", "./.cache")
 
 
 def get_local_run_dir(exp_name: str, local_dirs: List[str]) -> str:

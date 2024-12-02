@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('--model1_name', type=str, default='temp1.0')
     parser.add_argument('--model2_name', type=str, default='chatgpt')
     parser.add_argument('--base_dir', type=str) # example: /home/ubuntu/.cache/rlaif/sharegpt2turn_llama7b_sft_maxlen1024_2023-09-11_21-52-36_584206/step-10000/
-    parser.add_argument('--cache_dir', type=str, default=os.getenv("PROJECT_CACHE", "~/.cache"))
+    parser.add_argument('--cache_dir', type=str, default=os.getenv("PROJECT_CACHE", "./.cache"))
     parser.add_argument('--max_num_comparisons', type=int, default=200)
     parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--max_prompt_length', type=int, default=256)

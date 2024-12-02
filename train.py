@@ -14,8 +14,10 @@ import json
 import socket
 from typing import Optional, Set
 
-from huggingface_hub import login
-login(os.getenv("HF_KEY"))
+# from huggingface_hub import login
+# login(os.getenv("HF_KEY"))
+os.environ['HF_HOME'] = "./.cache/huggingface"
+os.environ["TRANSFORMERS_CACHE"] = "./.cache/huggingface"
 
 OmegaConf.register_new_resolver("get_local_run_dir", lambda exp_name, local_dirs: get_local_run_dir(exp_name, local_dirs))
 
@@ -78,14 +80,14 @@ def main(config: DictConfig):
     model_kwargs = {'device_map': 'balanced'} if config.trainer == 'BasicTrainer' else {}
     policy_dtype = getattr(torch, config.model.policy_dtype)
     policy = transformers.AutoModelForCausalLM.from_pretrained(
-        config.model.name_or_path, low_cpu_mem_usage=True, torch_dtype=policy_dtype, **model_kwargs)
+        config.model.name_or_path, low_cpu_mem_usage=True, torch_dtype=policy_dtype, cache_dir=os.environ['HF_HOME'], token="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", **model_kwargs)
     disable_dropout(policy)
 
     if config.loss.name == 'dpo':
         print('building reference model')
         reference_model_dtype = getattr(torch, config.model.reference_dtype)
         reference_model = transformers.AutoModelForCausalLM.from_pretrained(
-            config.model.name_or_path, low_cpu_mem_usage=True, torch_dtype=reference_model_dtype, **model_kwargs)
+            config.model.name_or_path, low_cpu_mem_usage=True, torch_dtype=reference_model_dtype, cache_dir=os.environ['HF_HOME'], token="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", **model_kwargs)
         disable_dropout(reference_model)
     else:
         reference_model = None

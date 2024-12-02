@@ -15,7 +15,7 @@ import transformers
 
 import argparse
 
-def _cached_function(fn_to_cache, cache_dir=f'{os.getenv("PROJECT_CACHE", "~/.cache")}/gpt4_completions/'):
+def _cached_function(fn_to_cache, cache_dir=f'{os.getenv("PROJECT_CACHE", "./.cache")}/gpt4_completions/'):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
@@ -97,10 +97,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--ff', type=int, default=0)
-    parser.add_argument('--cache_dir', type=str, default=os.getenv("PROJECT_CACHE", "~/.cache"))
+    parser.add_argument('--cache_dir', type=str, default=os.getenv("PROJECT_CACHE", "./.cache"))
     parser.add_argument('--data_fraction', type=float, default=1.0)
     parser.add_argument('--ai_model', type=str, default='gpt4')
-    parser.add_argument('--base_output_dir', type=str, default=f"{os.getenv('PROJECT_CACHE', '~/.cache')}/sharegpt_data")
+    parser.add_argument('--base_output_dir', type=str, default=f"{os.getenv('PROJECT_CACHE', './.cache')}/sharegpt_data")
     args = parser.parse_args()
 
     if args.ai_model in ['gpt4']:
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         def claude_chat_completion_helper(prompt=None, **kwargs):
             return client.completions.create(prompt=prompt, **kwargs).completion
 
-        _claude_chat_completion = _cached_function(claude_chat_completion_helper, cache_dir=f"{os.getenv('PROJECT_CACHE', '~/.cache')}/claude_completions/")
+        _claude_chat_completion = _cached_function(claude_chat_completion_helper, cache_dir=f"{os.getenv('PROJECT_CACHE', './.cache')}/claude_completions/")
 
     tokenizer = transformers.AutoTokenizer.from_pretrained('huggyllama/llama-7b')
     tokenizer.pad_token_id = tokenizer.eos_token_id

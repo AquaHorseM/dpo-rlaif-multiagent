@@ -47,6 +47,7 @@ def main():
     elif args.model_name == "pythia28":
         model_path = 'EleutherAI/pythia-2.8b'
 
+    print(f'loading model {model_path}')
     policy = transformers.AutoModelForCausalLM.from_pretrained(model_path, device_map='balanced')
     tokenizer = transformers.AutoTokenizer.from_pretrained(model_path)
     print(tokenizer)
@@ -168,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--prompt_set', type=str, default='sharegpt')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--ff', type=int, default=0)
-    parser.add_argument('--cache_dir', type=str, default=os.getenv("PROJECT_CACHE", "~/.cache"))
+    parser.add_argument('--cache_dir', type=str, default=os.getenv("PROJECT_CACHE", "./.cache"))
     parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--max_prompt_length', type=int, default=256)
     parser.add_argument('--chunk_size', type=int, default=32)
