@@ -13,14 +13,15 @@ wget -P ./.cache/rlaif/sharegpt_data https://huggingface.co/datasets/TRI-ML/dpo-
 # SFT
 python train.py model=mistral7b batch_size=8 eval_batch_size=16 sample_during_eval=false loss=sft lr=1e-6 trainer=FSDPTrainer activation_checkpointing=True data_fraction=1.0 save_every=epoch_2 n_epochs=6 datasets=[sharegpt4]
 
-# SFT stored in .cache\huggingface\models--mistralai--Mistral-7B-v0.1\snapshots\7231864981174d9bee8c7687c24c8344414eae6b
+# SFT stored in .cache/huggingface/models--mistralai--Mistral-7B-v0.1/snapshots/7231864981174d9bee8c7687c24c8344414eae6b
 
 # generate own preference data using your newly SFT-ed model
-bash parallel_sample.sh ./.cache/rlaif/sharegpt_mistral7b_2024-02-19_16-55-49_904051/epoch-9/ mistral7b
+bash parallel_sample.sh ./.cache/huggingface/models--mistralai--Mistral-7B-v0.1/snapshots/7231864981174d9bee8c7687c24c8344414eae6b/ mistral7b
 # or
-.\parallel_sample.ps1 "./.cache/rlaif/sharegpt_mistral7b_2024-02-19_16-55-49_904051/epoch-9/ mistral7b" "llama7b" 1.0 "sharegpt"
+.\parallel_sample.ps1 "./.cache/huggingface/models--mistralai--Mistral-7B-v0.1/snapshots/7231864981174d9bee8c7687c24c8344414eae6b/" "mistral7b" 1.0 "sharegpt"
 # or
-python generate_samples.py --archive "./.cache/rlaif/sharegpt_mistral7b_2024-02-19_16-55-49_904051/epoch-9/ mistral7b" --temperatures 1.0 --ff 6000 --data_fraction 1.0 --model_name llama7b --prompt_set sharegpt
+python generate_samples.py --archive "./.cache/huggingface/models--mistralai--Mistral-7B-v0.1/snapshots/7231864981174d9bee8c7687c24c8344414eae6b/" --temperatures 1.0 --ff 6000 --data_fraction 1.0 --model_name llama7b --prompt_set sharegpt
+# stored in: \.cache\huggingface\models--huggyllama--llama-7b
 
 # Or download the pre-generated data
 wget -P ./.cache/rlaif/sharegpt_data/comparisons_gpt4/mistral7bsft_vs_chatgpt https://huggingface.co/datasets/TRI-ML/dpo-rlaif-data/resolve/main/comparisons_gpt4/mistral7bsft_vs_chatgpt/annotations.json
