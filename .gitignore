@@ -1,4 +1,6 @@
 outputs/
 __pycache__
-data/
 .cache/
+local_models/
+data/
+alpaca_eval/

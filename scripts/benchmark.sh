@@ -34,3 +34,7 @@ python label_ai_preferences.py --model1_name mistral7b_1.0 --base_dir ./.cache/h
 # DPO
 python train.py loss=dpo loss.beta=0.05 model.archive=./.cache/rlaif/sharegpt_pythia28_2024-02-19_16-55-49_904051/epoch-3/policy.pt prefs_path=./.cache/rlaif/sharegpt_data/comparisons_gpt4/mistral7bsft_vs_chatgpt/annotations.json exp_name=pythia28 data_fraction=1.0 model=pythia28 save_every=epoch_1 n_epochs=3
 
+
+# llm annotator
+CUDA_VISIBLE_DEVICES=4 python ./utils/llm_annotator.py --model_path "local_models/models--huggyllama--llama-7b/snapshots/4782ad278652c7c71b72204d462d6d01eaaf7549"
+# mistralai does not work, the model seem to have some error
