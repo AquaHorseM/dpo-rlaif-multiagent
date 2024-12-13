@@ -36,5 +36,6 @@ python train.py loss=dpo loss.beta=0.05 model.archive=./.cache/rlaif/sharegpt_py
 
 
 # llm annotator
-CUDA_VISIBLE_DEVICES=4 python ./utils/llm_annotator.py --model_path "local_models/models--huggyllama--llama-7b/snapshots/4782ad278652c7c71b72204d462d6d01eaaf7549"
+CUDA_VISIBLE_DEVICES=4 python ./utils/llm_annotator.py --model_name "llama7b"
+CUDA_VISIBLE_DEVICES=5 python ./utils/llm_annotator.py --model_name "yi6b"
 # mistralai does not work, the model seem to have some error

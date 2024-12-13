@@ -1,12 +1,13 @@
 import os
 import json
 import random
+import re
 from collections import defaultdict
 from datasets import load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class llmAnnotator:
-    def __init__(self, dataset_path, model_path):
+    def __init__(self, dataset_path, dataset_name, model_name):
         """
         Initialize the llmAnnotator with the dataset path and LLM model.
 
@@ -14,7 +15,32 @@ class llmAnnotator:
             dataset_path (str): Path to the offline dataset (e.g., data/Anthropic___hh-rlhf).
             model_path (str): Path to the offline LLM model directory.
         """
+
         self.dataset_path = dataset_path
+        self.dataset_name = dataset_name
+        self.model_name = model_name
+        if model_name == "llama7b": # working
+            model_path = "local_models/models--huggyllama--llama-7b/snapshots/4782ad278652c7c71b72204d462d6d01eaaf7549"
+        elif model_name == "mistral7b": # not working
+            model_path = "local_models/models--mistralai--Mistral-7B-v0.1/snapshots/7231864981174d9bee8c7687c24c8344414eae6b"
+            raise NotImplementedError("mistral7b not complete yet.")
+        elif model_name == "deepseek7b":    # not working, why?
+            model_path = "local_models/models--deepseek-ai--deepseek-llm-7b-base/snapshots/7683fea62db869066ddaff6a41d032262c490d4f"
+        elif model_name == "llama32_1b":    # working
+            model_path = "local_models/models--meta-llama--Llama-3.2-1B/snapshots/4e20de362430cd3b72f300e6b0f18e50e7166e08"
+        elif model_name == "llama2_13b":
+            raise NotImplementedError("llama2_13b not available yet.")
+        elif model_name == "yi6b":  # working
+            model_path = "local_models/models--01-ai--Yi-6B/snapshots/80080be87ec5a0103f643195f2d9003b8068941b"
+        elif model_name == "mixtral":
+            raise NotImplementedError("mixtral not available yet.")
+        elif model_name == "zephyr7b":
+            raise NotImplementedError("zephyr7b not available yet.")
+        elif model_name == "pythia28":  # working, but is too stupid to answer the question
+            model_path = "local_models/models--EleutherAI--pythia-2.8b/snapshots/2a259cdd96a4beb1cdf467512e3904197345f6a9"
+        else:
+            raise ValueError(f"Unknown model name: {model_name}")
+        
         print(f"Loading LLM model from {model_path}...")
         self.model = AutoModelForCausalLM.from_pretrained(model_path, local_files_only=True)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
@@ -31,17 +57,30 @@ class llmAnnotator:
         Returns:
             dict: Processed dataset.
         """
-        print(f"Loading dataset ({split} split) from {self.dataset_path}...")
+
+        dataset_path = os.path.join(self.dataset_path, self.dataset_name)
+        print(f"Loading dataset ({split} split) from {dataset_path}...")
         # dataset = load_dataset("Anthropic/hh-rlhf", cache_dir=self.dataset_path, local_files_only=True)[split]
-        dataset = load_from_disk("./data")[split]
+        dataset = load_from_disk(dataset_path)[split]
 
-        data = defaultdict(lambda: {"responses": [], "pairs": []})
-        for row in dataset:
-            prompt = row["chosen"].split("\n\nAssistant:")[0] + "\n\nAssistant:"
-            chosen_response = row["chosen"].split("\n\nAssistant:")[1]
-            rejected_response = row["rejected"].split("\n\nAssistant:")[1]
+        if self.dataset_name == "Anthropic":
+            data = defaultdict(lambda: {"responses": [], "pairs": []})
+            for row in dataset:
+                prompt = row["chosen"].split("\n\nAssistant:")[0] + "\n\nAssistant:"
+                chosen_response = row["chosen"].split("\n\nAssistant:")[1]
+                rejected_response = row["rejected"].split("\n\nAssistant:")[1]
+                data[prompt]["responses"].extend([chosen_response, rejected_response])
 
-            data[prompt]["responses"].extend([chosen_response, rejected_response])
+        elif self.dataset_name == "ListUltraFeedback":
+            data = defaultdict(lambda: {"responses": [], "pairs": [], "scores": []})
+            for row in dataset:
+                prompt = row["prompt"]
+                responses = row["all_responses"]
+                data[prompt]["responses"].extend(responses)
+
+        else:
+            raise ValueError(f"Unknown dataset name: {self.dataset_name}")
+
 
         print(f"Loaded {len(data)} prompts.")
         return data
@@ -58,6 +97,8 @@ class llmAnnotator:
             dict: Dataset with annotated preference pairs.
         """
         annotated_data = defaultdict(lambda: {"pairs": []})
+        if test:
+            print("Test mode: Annotating preferences for at most 100 prompts.")
         for prompt, values in data.items():
             if len(annotated_data) == 100 and test:
                 print("Test mode: Stopping early with 100 prompts.")
@@ -66,19 +107,34 @@ class llmAnnotator:
             responses = values["responses"]
             annotated_data[prompt]["responses"] = responses
 
-            llm_input_1 = f"\n\nHuman: {prompt}\n\nAssistant 1: {responses[0]}\n\nAssistant 2: {responses[1]}\n\nWhich response is better? Answer with 'Assistant 1' or 'Assistant 2'."
-            llm_input_2 = f"\n\nHuman: {prompt}\n\nAssistant 1: {responses[1]}\n\nAssistant 2: {responses[0]}\n\nWhich response is better? Answer with 'Assistant 1' or 'Assistant 2'."
+            llm_input_1 = (
+                f"You are tasked with evaluating the quality of assistants' responses. I will provide you with a question and two responses.\n"
+                f"Your task is to choose which response is better.\n"
+                f"Question: {prompt}\n\nAssistant 1: {responses[0]}\n\nAssistant 2: {responses[1]}\n\n"
+                f"Which response is better? Answer with only 'Assistant 1' or 'Assistant 2'. Do not add any explanation or extra text."
+            )
+            llm_input_2 = (
+                f"You are tasked with evaluating the quality of assistants' responses. I will provide you with a question and two responses.\n"
+                f"Your task is to choose which response is better.\n"
+                f"Question: {prompt}\n\nAssistant 1: {responses[1]}\n\nAssistant 2: {responses[0]}\n\n"
+                f"Which response is better? Answer with only 'Assistant 1' or 'Assistant 2'. Do not add any explanation or extra text."
+            )
             inputs_1 = self.tokenizer(llm_input_1, return_tensors="pt", truncation=True, padding=True)
             inputs_2 = self.tokenizer(llm_input_2, return_tensors="pt", truncation=True, padding=True)
-            outputs_1 = self.model.generate(**inputs_1, max_length=1000)
-            outputs_2 = self.model.generate(**inputs_2, max_length=1000)
+            outputs_1 = self.model.generate(**inputs_1, max_new_tokens=10)
+            outputs_2 = self.model.generate(**inputs_2, max_new_tokens=10)
             preference_1 = self.tokenizer.decode(outputs_1[0], skip_special_tokens=True)
             preference_2 = self.tokenizer.decode(outputs_2[0], skip_special_tokens=True)
+            # if test:
+                # print(f"\n\nLLM Input 1: {llm_input_1}\n\nLLM Input 2: {llm_input_2}\n\n")
+                # print(f"\n\nPreference 1: {preference_1}\n\nPreference 2: {preference_2}\n\n")
 
             # Determine preference label
-            if "Assistant 1" in preference_1 and "Assistant 2" in preference_2:
+            preference_label_1 = extract_preference_from_output(llm_input_1, preference_1)
+            preference_label_2 = extract_preference_from_output(llm_input_2, preference_2)
+            if preference_label_1 == 0 and preference_label_2 == 1:
                 preference_label = 0
-            elif "Assistant 2" in preference_1 and "Assistant 1" in preference_2:
+            elif preference_label_1 == 1 and preference_label_2 == 0:
                 preference_label = 1
             else:
                 preference_label = -1   # Ambiguous or inconsistant preference
@@ -87,6 +143,7 @@ class llmAnnotator:
                 "pair": [responses[0], responses[1]],
                 "preference": preference_label,
             })
+            print("preferences:", preference_label_1, preference_label_2, preference_label)
 
         return annotated_data
 
@@ -102,6 +159,8 @@ class llmAnnotator:
         Returns:
             dict: Dataset with annotated preference pairs.
         """
+        if test:
+            print("Test mode: Annotating preferences for at most 100 prompts.")
         annotated_data = defaultdict(lambda: {"pairs": []})
 
         for prompt, values in data.items():
@@ -117,22 +176,19 @@ class llmAnnotator:
 
                 # Prepare the input for LLM preference annotation
                 llm_input = (
-                    f"\n\nHuman: {prompt}\n\nAssistant 1: {pair[0]}\n\nAssistant 2: {pair[1]}\n\n"
-                    "Which response is better? Answer with 'Assistant 1' or 'Assistant 2'."
+                    f"You are tasked with evaluating the quality of assistants' responses. I will provide you with a question and two responses.\n"
+                    f"Your task is to choose which response is better.\n"
+                    f"Question: {prompt}\n\nAssistant 1: {responses[0]}\n\nAssistant 2: {responses[1]}\n\n"
+                    f"Which response is better? Answer with only 'Assistant 1' or 'Assistant 2'. Do not add any explanation or extra text."
                 )
 
                 # Tokenize and generate preference signal
                 inputs = self.tokenizer(llm_input, return_tensors="pt", truncation=True, padding=True)
-                outputs = self.model.generate(**inputs, max_length=1000)
+                outputs = self.model.generate(**inputs, max_length=10)
                 preference = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
                 # Determine preference label
-                if "Assistant 1" in preference:
-                    preference_label = 0
-                elif "Assistant 2" in preference:
-                    preference_label = 1
-                else:
-                    preference_label = -1  # Ambiguous or no clear preference
+                preference_label = extract_preference_from_output(llm_input, preference)
 
                 annotated_data[prompt]["pairs"].append({
                     "pair": pair,
@@ -150,24 +206,37 @@ class llmAnnotator:
             output_path (str): Path to save the JSON file.
         """
         output_path = os.path.join(output_path, label)
+        output_path = os.path.join(output_path, self.model_name)
         print(f"Saving annotated dataset to {output_path}...")
         with open(output_path, "w") as f:
             json.dump(annotated_data, f, indent=4)
         print("Annotated dataset saved successfully.")
 
+def extract_preference_from_output(input_text, output_text):
+    if output_text.startswith(input_text):
+        output_text = output_text[len(input_text):].strip()
+    match = re.search(r"\b(Assistant 1|Assistant 2)\b", output_text)
+    if match and match.group(1) == "Assistant 1":
+        return 0
+    elif match and match.group(1) == "Assistant 2":
+        return 1
+    else:
+        return -1   # If no valid preference is found
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Annotate dataset using an offline LLM model.")
-    parser.add_argument("--dataset_path", type=str, default="./data", help="Path to the offline dataset.")   # debugging
-    parser.add_argument("--model_path", type=str, required=True, help="Path to the offline LLM model.")
-    parser.add_argument("--output_path", type=str, default="./data/labeled/", help="Path to save the annotated dataset.")
+    parser.add_argument("--dataset_path", type=str, default="./data", help="Path to the offline dataset.")
+    parser.add_argument("--dataset_name", type=str, default="ListUltraFeedback", help="Name of the offline dataset.", choices=["Anthropic", "ListUltraFeedback"])
+    parser.add_argument("--model_name", type=str, required=True, help="Path to the offline LLM model.", choices=["llama7b", "mistral7b", "deepseek7b", "llama32_1b", "llama2_13b", "yi6b", "mixtral", "zephyr7b", "pythia28"])
+    parser.add_argument("--output_path", type=str, default="./data/annotated", help="Path to save the annotated dataset.")
     parser.add_argument("--split", type=str, default="train", help="Dataset split to annotate (default: train).")
     parser.add_argument("--num_pairs_per_prompt", type=int, default=5, help="Number of pairs to sample per prompt.")
 
     args = parser.parse_args()
 
-    annotator = llmAnnotator(args.dataset_path, args.model_path)
+    annotator = llmAnnotator(args.dataset_path, args.dataset_name, args.model_name)
     dataset = annotator.load_dataset(args.split)
-    annotated_dataset = annotator.annotate_pair_preference(dataset)
+    annotated_dataset = annotator.annotate_pair_preference(dataset, test=True)
     annotator.save_annotated_dataset(annotated_dataset, args.output_path, label="pair")
