@@ -1,0 +1,1 @@
+python train/reward_model.py --data_file "data/annotated/pair/claude/formatted_dataset.json"  --model_name "bert-base-uncased" --output_dir "./reward_model"
